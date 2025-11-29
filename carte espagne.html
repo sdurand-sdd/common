@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espagne - Capitales de Province</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e3799;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.98);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 350px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .region-section {
+            margin: 15px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .region-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .city-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+        .city-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: left;
+            transition: all 0.3s;
+        }
+        .city-btn:hover {
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            transform: translateX(5px);
+        }
+        .stats-panel {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 12px;
+        }
+        .counter {
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h2 style="color: #2c3e50; margin: 0 0 15px 0; text-align: center;">🇪🇸 Capitales de Province</h2>
+        
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 Rechercher une ville..." onkeyup="filterCities()">
+        
+        <div id="regionsContainer">
+            <!-- Les régions seront générées dynamiquement -->
+        </div>
+
+        <div class="stats-panel">
+            <div>Total: <span id="cityCount">0</span> capitales | Zoom: <span id="zoom-level">6</span></div>
+            <button onclick="resetView()" style="background: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-top: 8px;">
+                🗺️ Vue Espagne
+            </button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Configuration de la carte
+        const map = L.map('map', {
+            minZoom: 6,
+            maxZoom: 18,
+            zoomControl: true,
+            center: [40.4168, -3.7038],
+            zoom: 6
+        });
+
+        // Couche avec style bleu (Mer 24)
+        const styledLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxNativeZoom: 19
+        }).addTo(map);
+
+        // Appliquer le style Mer 24
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-layer {
+                filter: hue-rotate(190deg) saturate(1.3) contrast(0.85) brightness(1.05) !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Toutes les capitales de province espagnoles (50 provinces + 2 villes autonomes)
+        const cities = {
+            // Andalucía
+            'almeria': { coords: [36.8402, -2.4679], zoom: 14, name: "Almería", region: "Andalousie" },
+            'cadix': { coords: [36.5298, -6.2926], zoom: 14, name: "Cadix", region: "Andalousie" },
+            'cordoue': { coords: [37.8882, -4.7794], zoom: 14, name: "Cordoue", region: "Andalousie" },
+            'grenade': { coords: [37.1773, -3.5986], zoom: 14, name: "Grenade", region: "Andalousie" },
+            'huelva': { coords: [37.2614, -6.9447], zoom: 14, name: "Huelva", region: "Andalousie" },
+            'jaen': { coords: [37.7658, -3.7895], zoom: 14, name: "Jaén", region: "Andalousie" },
+            'malaga': { coords: [36.7194, -4.4200], zoom: 14, name: "Malaga", region: "Andalousie" },
+            'seville': { coords: [37.3891, -5.9845], zoom: 14, name: "Séville", region: "Andalousie" },
+
+            // Aragón
+            'huesca': { coords: [42.1361, -0.4087], zoom: 14, name: "Huesca", region: "Aragon" },
+            'teruel': { coords: [40.3457, -1.1065], zoom: 14, name: "Teruel", region: "Aragon" },
+            'saragosse': { coords: [41.6488, -0.8891], zoom: 13, name: "Saragosse", region: "Aragon" },
+
+            // Asturias
+            'oviedo': { coords: [43.3619, -5.8494], zoom: 14, name: "Oviedo", region: "Asturies" },
+
+            // Baleares
+            'palma': { coords: [39.5696, 2.6502], zoom: 13, name: "Palma de Mallorca", region: "Baléares" },
+
+            // Canarias
+            'las-palmas': { coords: [28.1235, -15.4363], zoom: 13, name: "Las Palmas", region: "Canaries" },
+            'santa-cruz-tenerife': { coords: [28.4698, -16.2549], zoom: 13, name: "Santa Cruz de Tenerife", region: "Canaries" },
+
+            // Cantabria
+            'santander': { coords: [43.4623, -3.8099], zoom: 14, name: "Santander", region: "Cantabrie" },
+
+            // Castilla-La Mancha
+            'albacete': { coords: [38.9944, -1.8585], zoom: 14, name: "Albacete", region: "Castille-La Manche" },
+            'ciudad-real': { coords: [38.9848, -3.9275], zoom: 14, name: "Ciudad Real", region: "Castille-La Manche" },
+            'cuenca': { coords: [40.0718, -2.1340], zoom: 14, name: "Cuenca", region: "Castille-La Manche" },
+            'guadalajara': { coords: [40.6286, -3.1628], zoom: 14, name: "Guadalajara", region: "Castille-La Manche" },
+            'toledo': { coords: [39.8628, -4.0273], zoom: 14, name: "Tolède", region: "Castille-La Manche" },
+
+            // Castilla y León
+            'avila': { coords: [40.6564, -4.7003], zoom: 14, name: "Ávila", region: "Castille-et-León" },
+            'burgos': { coords: [42.3439, -3.6969], zoom: 14, name: "Burgos", region: "Castille-et-León" },
+            'leon': { coords: [42.5987, -5.5671], zoom: 14, name: "León", region: "Castille-et-León" },
+            'palencia': { coords: [42.0125, -4.5311], zoom: 14, name: "Palencia", region: "Castille-et-León" },
+            'salamanca': { coords: [40.9640, -5.6630], zoom: 14, name: "Salamanque", region: "Castille-et-León" },
+            'segovie': { coords: [40.9429, -4.1088], zoom: 14, name: "Ségovie", region: "Castille-et-León" },
+            'soria': { coords: [41.7640, -2.4688], zoom: 14, name: "Soria", region: "Castille-et-León" },
+            'valladolid': { coords: [41.6523, -4.7245], zoom: 14, name: "Valladolid", region: "Castille-et-León" },
+            'zamora': { coords: [41.5037, -5.7438], zoom: 14, name: "Zamora", region: "Castille-et-León" },
+
+            // Catalogne
+            'barcelone': { coords: [41.3851, 2.1734], zoom: 13, name: "Barcelone", region: "Catalogne" },
+            'gérone': { coords: [41.9834, 2.8247], zoom: 14, name: "Gérone", region: "Catalogne" },
+            'lleida': { coords: [41.6176, 0.6200], zoom: 14, name: "Lleida", region: "Catalogne" },
+            'tarragone': { coords: [41.1189, 1.2445], zoom: 14, name: "Tarragone", region: "Catalogne" },
+
+            // Estrémadure
+            'badajoz': { coords: [38.8794, -6.9707], zoom: 14, name: "Badajoz", region: "Estrémadure" },
+            'caceres': { coords: [39.4753, -6.3724], zoom: 14, name: "Cáceres", region: "Estrémadure" },
+
+            // Galice
+            'la-corogne': { coords: [43.3623, -8.4115], zoom: 14, name: "La Corogne", region: "Galice" },
+            'lugo': { coords: [43.0121, -7.5559], zoom: 14, name: "Lugo", region: "Galice" },
+            'ourense': { coords: [42.3364, -7.8636], zoom: 14, name: "Ourense", region: "Galice" },
+            'saint-jacques': { coords: [42.8805, -8.5456], zoom: 14, name: "Saint-Jacques-de-Compostelle", region: "Galice" },
+
+            // La Rioja
+            'logrono': { coords: [42.4627, -2.4450], zoom: 14, name: "Logroño", region: "La Rioja" },
+
+            // Madrid
+            'madrid': { coords: [40.4168, -3.7038], zoom: 13, name: "Madrid", region: "Madrid" },
+
+            // Murcie
+            'murcie': { coords: [37.9922, -1.1307], zoom: 14, name: "Murcie", region: "Murcie" },
+
+            // Navarre
+            'pampelune': { coords: [42.8125, -1.6458], zoom: 14, name: "Pampelune", region: "Navarre" },
+
+            // Pays Basque
+            'bilbao': { coords: [43.2630, -2.9350], zoom: 14, name: "Bilbao", region: "Pays Basque" },
+            'saint-sebastien': { coords: [43.3183, -1.9812], zoom: 15, name: "Saint-Sébastien", region: "Pays Basque" },
+            'vitoria': { coords: [42.8506, -2.6726], zoom: 14, name: "Vitoria-Gasteiz", region: "Pays Basque" },
+
+            // Communauté Valencienne
+            'alicante': { coords: [38.3452, -0.4810], zoom: 14, name: "Alicante", region: "Valence" },
+            'castellon': { coords: [39.9864, -0.0513], zoom: 14, name: "Castellón de la Plana", region: "Valence" },
+            'valence': { coords: [39.4699, -0.3763], zoom: 13, name: "Valence", region: "Valence" },
+
+            // Villes autonomes
+            'ceuta': { coords: [35.8894, -5.3213], zoom: 15, name: "Ceuta", region: "Villes Autonomes" },
+            'melilla': { coords: [35.2923, -2.9381], zoom: 15, name: "Melilla", region: "Villes Autonomes" }
+        };
+
+        // Couleurs par région
+        const regionColors = {
+            'Andalousie': '#e74c3c',
+            'Aragon': '#3498db',
+            'Asturies': '#9b59b6',
+            'Baléares': '#f39c12',
+            'Canaries': '#2ecc71',
+            'Cantabrie': '#1abc9c',
+            'Castille-La Manche': '#d35400',
+            'Castille-et-León': '#c0392b',
+            'Catalogne': '#2980b9',
+            'Estrémadure': '#8e44ad',
+            'Galice': '#27ae60',
+            'La Rioja': '#e67e22',
+            'Madrid': '#e74c3c',
+            'Murcie': '#3498db',
+            'Navarre': '#9b59b6',
+            'Pays Basque': '#2ecc71',
+            'Valence': '#f39c12',
+            'Villes Autonomes': '#95a5a6'
+        };
+
+        // Groupe de marqueurs
+        const cityMarkers = L.layerGroup().addTo(map);
+
+        // Créer les marqueurs pour toutes les villes
+        Object.values(cities).forEach(city => {
+            const color = regionColors[city.region] || '#95a5a6';
+            
+            const customIcon = L.divIcon({
+                className: 'city-marker',
+                html: `
+                    <div style="
+                        background: linear-gradient(135deg, ${color}, ${color}99);
+                        color: white; 
+                        padding: 8px; 
+                        border-radius: 50%; 
+                        border: 2px solid white; 
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                        width: 16px;
+                        height: 16px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 12px;
+                    ">📍</div>
+                `,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            L.marker(city.coords, { icon: customIcon })
+                .addTo(cityMarkers)
+                .bindPopup(`
+                    <div style="text-align: center; min-width: 180px;">
+                        <h4 style="margin: 0 0 8px 0; color: #2c3e50;">${city.name}</h4>
+                        <div style="background: ${color}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; display: inline-block;">
+                            ${city.region}
+                        </div>
+                        <p style="margin: 8px 0; color: #7f8c8d; font-size: 12px;">
+                            Capitale de province
+                        </p>
+                        <button onclick="zoomToDetailedView('${Object.keys(cities).find(key => cities[key] === city)}')" 
+                                style="background: ${color}; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 12px;">
+                            🔍 Zoom détaillé
+                        </button>
+                    </div>
+                `);
+        });
+
+        // Générer l'interface par régions
+        function generateRegionInterface() {
+            const regionsContainer = document.getElementById('regionsContainer');
+            const regions = {};
+            
+            // Grouper les villes par région
+            Object.entries(cities).forEach(([key, city]) => {
+                if (!regions[city.region]) {
+                    regions[city.region] = [];
+                }
+                regions[city.region].push({ key, ...city });
+            });
+
+            // Générer le HTML pour chaque région
+            Object.entries(regions).forEach(([regionName, regionCities]) => {
+                const regionSection = document.createElement('div');
+                regionSection.className = 'region-section';
+                regionSection.innerHTML = `
+                    <div class="region-title">
+                        ${regionName}
+                        <span class="counter">${regionCities.length}</span>
+                    </div>
+                    <div class="city-buttons">
+                        ${regionCities.map(city => `
+                            <button class="city-btn" onclick="zoomToCity('${city.key}')">
+                                ${city.name}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                regionsContainer.appendChild(regionSection);
+            });
+
+            // Mettre à jour le compteur
+            document.getElementById('cityCount').textContent = Object.keys(cities).length;
+        }
+
+        // Fonction de recherche
+        function filterCities() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const cityButtons = document.querySelectorAll('.city-btn');
+            
+            cityButtons.forEach(button => {
+                const cityName = button.textContent.toLowerCase();
+                if (cityName.includes(searchTerm)) {
+                    button.style.display = 'block';
+                } else {
+                    button.style.display = 'none';
+                }
+            });
+        }
+
+        // Fonctions de navigation
+        function zoomToCity(cityKey) {
+            const city = cities[cityKey];
+            if (city) {
+                map.setView(city.coords, city.zoom);
+                cityMarkers.eachLayer(layer => {
+                    if (layer.getLatLng && layer.getLatLng().equals(city.coords)) {
+                        setTimeout(() => layer.openPopup(), 500);
+                    }
+                });
+            }
+        }
+
+        function zoomToDetailedView(cityKey) {
+            const city = cities[cityKey];
+            if (city) {
+                map.setView(city.coords, 16);
+            }
+        }
+
+        function resetView() {
+            map.setView([40.4168, -3.7038], 6);
+            cityMarkers.eachLayer(layer => {
+                if (layer.closePopup) layer.closePopup();
+            });
+            document.getElementById('searchInput').value = '';
+            filterCities();
+        }
+
+        // Mise à jour du zoom
+        map.on('zoomend', function() {
+            document.getElementById('zoom-level').textContent = map.getZoom();
+        });
+
+        // Échelle
+        L.control.scale({ imperial: false }).addTo(map);
+
+        // Générer l'interface au chargement
+        generateRegionInterface();
+
+        // Afficher Madrid au démarrage
+        setTimeout(() => zoomToCity('madrid'), 1000);
+    </script>
+</body>
+</html>
