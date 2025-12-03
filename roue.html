@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎡 Roue de tirage au sort</title>
+    <style>
+        /* CSS basé sur le style du code React et de la capture d'écran */
+        :root {
+            --purple-600: #8b5cf6;
+            --purple-800: #6b21a8;
+            --pink-500: #ec4899;
+            --yellow-400: #facc15;
+            --yellow-600: #eab308;
+            --green-500: #22c55e;
+            --blue-500: #3b82f6;
+            --bg-start: #f3e8ff; /* purple-100 */
+            --bg-end: #fce7f3; /* pink-100 */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(to bottom right, var(--bg-start), var(--bg-end));
+            color: #333;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--purple-800);
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--purple-600);
+            font-size: 0.875rem;
+        }
+
+        /* Classes Section */
+        #classes-section {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            margin: 0 auto 1.5rem;
+            max-width: 900px;
+        }
+
+        .classes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .classes-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .class-tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .class-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            font-weight: 500;
+            white-space: nowrap; /* Prevent name wrapping */
+        }
+
+        .class-tag.active {
+            background-color: var(--purple-600);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .class-tag:not(.active) {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .class-tag:not(.active):hover {
+            background-color: #e5e7eb;
+        }
+        
+        .class-tag button {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .class-tag button:hover {
+            opacity: 1;
+        }
+
+        .class-tag-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .class-tag.editing input {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--purple-600);
+            border-radius: 0.25rem;
+            width: 100px;
+            font-size: 0.875rem;
+            outline: none;
+        }
+
+        .new-class-input {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.5rem;
+            background-color: #f0fdf4;
+            border-radius: 0.5rem;
+        }
+
+        .new-class-input input {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--green-500);
+            border-radius: 0.25rem;
+            width: 120px;
+            font-size: 0.875rem;
+            outline: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        /* Wheel Area */
+        .wheel-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+        }
+
+        .pointer-zone {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(-1.5rem);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .pointer-circle {
+            background-color: var(--yellow-400);
+            border: 4px solid var(--yellow-600);
+            border-radius: 9999px;
+            padding: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .pointer-triangle {
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 25px solid var(--yellow-600);
+        }
+
+        #wheel-svg {
+            width: 100%;
+            height: 100%;
+            transition: transform 8s cubic-bezier(0.17, 0.67, 0.12, 0.99); /* Spin animation */
+        }
+        
+        .wheel-svg-stopped {
+            transition: none !important;
+        }
+
+        #empty-wheel-message {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            color: #9ca3af;
+            font-size: 1.25rem;
+            text-align: center;
+            padding: 1rem;
+            z-index: 10;
+        }
+
+        .wheel-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        #spin-button {
+            background: linear-gradient(to right, var(--purple-600), var(--pink-500));
+            color: white;
+            padding: 1.5rem 3rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        #spin-button:hover:not(:disabled) {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: scale(1.05);
+        }
+        
+        #spin-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #reset-button {
+            background-color: var(--blue-500);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 1.25rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        #reset-button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+        
+        #reset-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .winner-box {
+            margin-top: 2rem;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            animation: bounce 1s infinite;
+        }
+
+        .winner-box p:first-child {
+            color: #4b5563;
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+        }
+
+        .winner-box p:last-child {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--purple-600);
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(-5%);
+                animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+            }
+            50% {
+                transform: translateY(0);
+                animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+            }
+        }
+
+        /* Sidebar - Liste des éléments */
+        .sidebar {
+            width: 320px;
+            background-color: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar p {
+            color: #6b7280;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-actions button {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        #import-class-button {
+            background-color: var(--blue-500);
+            color: white;
+        }
+
+        #export-class-button {
+            background-color: var(--green-500);
+            color: white;
+        }
+
+        .sidebar-actions button:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        
+        .sidebar-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .add-item-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-item-form input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .add-item-form input:focus {
+            border-color: var(--purple-600);
+            box-shadow: 0 0 0 1px var(--purple-600);
+        }
+
+        .add-item-form button {
+            background-color: var(--purple-600);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .max-items-message {
+            color: #ea580c;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .items-list {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            padding-right: 5px; /* Scrollbar space */
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background-color: #f9fafb;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .item-row:hover {
+            background-color: #f3f4f6;
+        }
+
+        .item-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .item-color-dot {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            flex-shrink: 0;
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .item-row button {
+            color: #ef4444;
+            transition: color 0.2s;
+        }
+
+        .item-row button:hover:not(:disabled) {
+            color: #b91c1c;
+        }
+        
+        .item-row button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Removed Items */
+        .removed-items-section {
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .removed-items-section h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 0.75rem;
+        }
+
+        .removed-items-list {
+            max-height: 12rem;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .removed-item-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background-color: #f0fdf4;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .removed-item-row span:first-child {
+            font-size: 1.25rem;
+            color: var(--green-500);
+        }
+
+        .removed-item-row span:last-child {
+            color: #4b5563;
+            text-decoration: line-through;
+            font-size: 0.875rem;
+        }
+
+        /* Utility classes (simple icons via text) */
+        .icon {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            background-repeat: no-repeat;
+            background-size: contain;
+            vertical-align: middle;
+        }
+        
+        .icon-users { width: 1.25rem; height: 1.25rem; color: var(--purple-600); }
+        .icon-plus { content: '+'; font-weight: 700; }
+        .icon-trash { content: '🗑️'; }
+        .icon-play { content: '▶️'; }
+        .icon-reset { content: '↩️'; }
+        .icon-upload { content: '⬆️'; }
+        .icon-download { content: '⬇️'; }
+        .icon-edit { content: '✏️'; }
+        .icon-check { content: '✔️'; }
+        .icon-x { content: '❌'; }
+
+        /* General Button Reset */
+        button {
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            padding: 0;
+            line-height: 1;
+            color: inherit;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎡 Roue de tirage au sort</h1>
+            <p>✨ Sauvegarde automatique</p>
+        </div>
+
+        <div id="classes-section">
+            <div class="classes-header">
+                <h2><span class="icon-users">🧑‍🤝‍🧑</span> Mes classes</h2>
+                <div class="class-tag-actions">
+                    <button onclick="handleAllClassesImportClick()" id="import-all-button" class="class-tag" style="background-color: var(--blue-500); color: white;">
+                        <span class="icon-upload">⬆️</span> Tout importer
+                    </button>
+                    <button onclick="exportAllClasses()" id="export-all-button" class="class-tag" style="background-color: var(--green-500); color: white;">
+                        <span class="icon-download">⬇️</span> Tout exporter
+                    </button>
+                    <input type="file" id="all-classes-file-input" accept=".json" style="display: none;" onchange="importAllClasses(event)">
+                </div>
+            </div>
+            <div id="class-tag-container" class="class-tag-container">
+                </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="wheel-area">
+                <div class="wheel-container">
+                    <div class="pointer-zone">
+                        <div class="pointer-circle">
+                            <div class="pointer-triangle"></div>
+                        </div>
+                    </div>
+                    
+                    <svg id="wheel-svg" viewBox="0 0 200 200">
+                        </svg>
+                    
+                    <div id="empty-wheel-message" style="display: none;">
+                        <p>Tous les élèves ont été tirés !</p>
+                    </div>
+                </div>
+
+                <div class="wheel-actions">
+                    <button id="spin-button" onclick="spinWheel()">
+                        <span class="icon-play">▶️</span> Lancer la roue
+                    </button>
+                    <button id="reset-button" onclick="resetWheel()">
+                        <span class="icon-reset">↩️</span> Réinitialiser
+                    </button>
+                </div>
+
+                <div id="winner-display" style="display: none;" class="winner-box">
+                    <p>🎉 Gagnant :</p>
+                    <p id="winner-name"></p>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <h2 id="current-class-name-sidebar"></h2>
+                <p id="current-class-count"></p>
+
+                <div class="sidebar-actions">
+                    <button onclick="handleClassImportClick()" id="import-class-button">
+                        <span class="icon-upload">⬆️</span> Importer
+                    </button>
+                    <button onclick="exportCurrentClass()" id="export-class-button">
+                        <span class="icon-download">⬇️</span> Exporter
+                    </button>
+                    <input type="file" id="class-file-input" accept=".txt,.csv" style="display: none;" onchange="importClassItems(event)">
+                </div>
+
+                <div class="add-item-form">
+                    <input type="text" id="new-item-input" placeholder="Ajouter un élève..." maxlength="20" onkeypress="if(event.key === 'Enter') addItem()">
+                    <button onclick="addItem()" id="add-item-button">
+                        <span class="icon-plus">+</span>
+                    </button>
+                </div>
+
+                <p id="max-items-message" class="max-items-message" style="display: none;">Maximum 30 élèves</p>
+
+                <div id="items-list" class="items-list">
+                    </div>
+
+                <p id="empty-list-message" class="text-sm text-gray-500 mt-2" style="display: none;">Ajoutez des élèves pour commencer</p>
+
+                <div id="removed-items-section" class="removed-items-section" style="display: none;">
+                    <h3 id="removed-items-count">Déjà tirés (0)</h3>
+                    <div id="removed-items-list" class="removed-items-list">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration et Variables Globales ---
+        const MAX_ITEMS = 30;
+        const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+        let rotation = 0;
+
+        let classes = [];
+        let currentClassId = null;
+
+        // --- Fonctions d'Aide (DOM & Storage) ---
+        
+        // Simule la sauvegarde de données (localStorage)
+        const storage = {
+            get: (key) => {
+                const value = localStorage.getItem(key);
+                return value ? { value: value } : null;
+            },
+            set: (key, value) => {
+                localStorage.setItem(key, value);
+            }
+        };
+
+        // --- Fonctions de Gestion des Données ---
+
+        function getItems() {
+            const currentClass = classes.find(c => c.id === currentClassId);
+            return currentClass ? currentClass.items : [];
+        }
+
+        function getRemovedItems() {
+            const currentClass = classes.find(c => c.id === currentClassId);
+            return currentClass ? currentClass.removedItems : [];
+        }
+
+        function saveClassesList() {
+            try {
+                storage.set('wheel-classes', JSON.stringify(classes));
+            } catch (error) {
+                console.error('Erreur de sauvegarde des classes:', error);
+            }
+        }
+
+        function saveCurrentClassId() {
+            if (currentClassId) {
+                storage.set('wheel-current-class', currentClassId);
+            }
+        }
+
+        function updateCurrentClass(newItems, newRemovedItems) {
+            classes = classes.map(c => 
+                c.id === currentClassId 
+                    ? { ...c, items: newItems, removedItems: newRemovedItems }
+                    : c
+            );
+            saveClassesList();
+            renderAll();
+        }
+
+        // --- Chargement Initial ---
+
+        async function loadData() {
+            try {
+                const classesResult = await storage.get('wheel-classes');
+                const currentClassResult = await storage.get('wheel-current-class');
+                
+                let loadedClasses = [];
+                if (classesResult && classesResult.value) {
+                    loadedClasses = JSON.parse(classesResult.value);
+                }
+                
+                if (loadedClasses.length === 0) {
+                    // Default class based on the example data provided previously
+                    const defaultClass = {
+                        id: Date.now().toString(),
+                        name: '4EME4',
+                        items: ['Frank', 'Nayid', 'Aurélien', 'Vincenzo', 'Niels', 'Noam', 'Yanis', 'Mouad', 'Axel', 'Emmy', 'Alexie', 'Roman', 'Yasser', 'Rose', 'Louise', 'Lyanna', 'Maëva', 'Castille', 'Fiora', 'Daphnée', 'Rayan', 'Karim', 'Romane', 'Léa', 'Younes', 'Gabriel', 'Victoria', 'Zoé', 'Amalia', 'Léana'],
+                        removedItems: []
+                    };
+                    loadedClasses = [defaultClass];
+                }
+                
+                classes = loadedClasses;
+                
+                let classIdToLoad = null;
+                if (currentClassResult && currentClassResult.value) {
+                    classIdToLoad = currentClassResult.value;
+                } else {
+                    classIdToLoad = loadedClasses[0].id;
+                }
+                
+                const classToLoad = loadedClasses.find(c => c.id === classIdToLoad) || loadedClasses[0];
+                currentClassId = classToLoad.id;
+                
+            } catch (error) {
+                console.log('Erreur de chargement ou première utilisation', error);
+            } finally {
+                renderAll();
+            }
+        }
+        
+        // --- Fonctions de Rendu (Mise à jour de l'UI) ---
+
+        function renderAll() {
+            renderClassTags();
+            renderSidebar();
+            renderWheel();
+            saveClassesList();
+            saveCurrentClassId();
+        }
+
+        function renderClassTags() {
+            const container = document.getElementById('class-tag-container');
+            container.innerHTML = '';
+            
+            const editingId = container.dataset.editingId;
+            const isAdding = container.dataset.isAdding === 'true';
+
+            classes.forEach(cls => {
+                const isCurrent = cls.id === currentClassId;
+                const isEditing = cls.id === editingId;
+                
+                const tag = document.createElement('div');
+                tag.className = `class-tag ${isCurrent ? 'active' : ''} ${isEditing ? 'editing' : ''}`;
+                
+                if (isEditing) {
+                    // Input de renommage
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = cls.name;
+                    input.oninput = (e) => cls.name = e.target.value;
+                    input.onkeypress = (e) => { if (e.key === 'Enter') renameClass(cls.id); };
+                    tag.appendChild(input);
+                    
+                    // Boutons de validation/annulation
+                    const validateBtn = createIconButton('✔️', 'text-green-600', () => renameClass(cls.id));
+                    const cancelBtn = createIconButton('❌', 'text-red-600', () => renderClassTags());
+                    tag.appendChild(validateBtn);
+                    tag.appendChild(cancelBtn);
+                    setTimeout(() => input.focus(), 0);
+
+                } else {
+                    // Bouton principal pour changer de classe
+                    const switchBtn = document.createElement('button');
+                    switchBtn.textContent = cls.name;
+                    switchBtn.onclick = () => switchClass(cls.id);
+                    tag.appendChild(switchBtn);
+
+                    if (isCurrent) {
+                        // Bouton Modifier
+                        const editBtn = createIconButton('✏️', 'hover:opacity-80', () => startRename(cls.id, cls.name));
+                        tag.appendChild(editBtn);
+
+                        // Bouton Supprimer (si plus d'une classe)
+                        if (classes.length > 1) {
+                            const deleteBtn = createIconButton('❌', 'hover:opacity-80', () => deleteClass(cls.id));
+                            tag.appendChild(deleteBtn);
+                        }
+                    }
+                }
+                
+                container.appendChild(tag);
+            });
+
+            // Input pour Nouvelle Classe
+            if (isAdding) {
+                const div = document.createElement('div');
+                div.className = 'new-class-input';
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Nom de la classe';
+                input.id = 'new-class-name-input';
+                input.onkeypress = (e) => { if (e.key === 'Enter') addClass(); };
+                div.appendChild(input);
+
+                const validateBtn = createIconButton('✔️', 'text-green-600', addClass);
+                const cancelBtn = createIconButton('❌', 'text-red-600', () => stopAddingClass());
+                div.appendChild(validateBtn);
+                div.appendChild(cancelBtn);
+                
+                container.appendChild(div);
+                setTimeout(() => input.focus(), 0);
+
+            } else {
+                // Bouton Nouvelle Classe
+                const addBtn = document.createElement('button');
+                addBtn.className = 'class-tag';
+                // LIGNE CORRIGÉE : Utilisation de la valeur hexadécimale (équivalent de --green-500)
+                addBtn.style.backgroundColor = '#22c55e'; 
+                addBtn.style.color = 'white';
+                addBtn.onclick = startAddingClass;
+                addBtn.innerHTML = '<span class="icon-plus">+</span> Nouvelle classe';
+                container.appendChild(addBtn);
+            }
+        }
+
+        function createIconButton(icon, className, onClick) {
+            const btn = document.createElement('button');
+            btn.className = className;
+            btn.innerHTML = `<span class="icon">${icon}</span>`;
+            btn.onclick = onClick;
+            return btn;
+        }
+
+        function renderSidebar() {
+            const currentClass = classes.find(c => c.id === currentClassId);
+            const items = currentClass ? currentClass.items : [];
+            const removedItems = currentClass ? currentClass.removedItems : [];
+
+            document.getElementById('current-class-name-sidebar').textContent = currentClass ? currentClass.name : 'Classe inconnue';
+            document.getElementById('current-class-count').textContent = `(${items.length} élèves)`;
+
+            // Rendu de la liste active
+            const itemsList = document.getElementById('items-list');
+            itemsList.innerHTML = '';
+
+            items.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                
+                const info = document.createElement('div');
+                info.className = 'item-info';
+                
+                const colorDot = document.createElement('div');
+                colorDot.className = 'item-color-dot';
+                colorDot.style.backgroundColor = COLORS[index % COLORS.length];
+                info.appendChild(colorDot);
+                
+                const name = document.createElement('span');
+                name.className = 'item-name';
+                name.textContent = item;
+                info.appendChild(name);
+                
+                row.appendChild(info);
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.innerHTML = '<span class="icon">🗑️</span>';
+                removeBtn.onclick = () => removeItem(index);
+                removeBtn.disabled = items.length <= 1;
+                row.appendChild(removeBtn);
+                
+                itemsList.appendChild(row);
+            });
+
+            // Rendu de la liste des tirés
+            const removedSection = document.getElementById('removed-items-section');
+            const removedList = document.getElementById('removed-items-list');
+            removedList.innerHTML = '';
+            
+            if (removedItems.length > 0) {
+                removedSection.style.display = 'block';
+                document.getElementById('removed-items-count').textContent = `Déjà tirés (${removedItems.length})`;
+                
+                removedItems.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = 'removed-item-row';
+                    row.innerHTML = `<span>✓</span><span class="text-gray-600">${item}</span>`;
+                    removedList.appendChild(row);
+                });
+            } else {
+                removedSection.style.display = 'none';
+            }
+
+            // Messages et boutons
+            document.getElementById('empty-list-message').style.display = items.length === 0 && removedItems.length === 0 ? 'block' : 'none';
+            document.getElementById('max-items-message').style.display = items.length >= MAX_ITEMS ? 'block' : 'none';
+            document.getElementById('add-item-button').disabled = items.length >= MAX_ITEMS;
+            document.getElementById('export-class-button').disabled = items.length === 0 && removedItems.length === 0;
+
+            renderWheel();
+        }
+
+        function renderWheel() {
+            const items = getItems();
+            const svg = document.getElementById('wheel-svg');
+            const emptyMessage = document.getElementById('empty-wheel-message');
+            const spinButton = document.getElementById('spin-button');
+            const resetButton = document.getElementById('reset-button');
+            
+            if (items.length === 0) {
+                svg.style.display = 'none';
+                emptyMessage.style.display = 'flex';
+                spinButton.disabled = true;
+                resetButton.style.display = getRemovedItems().length > 0 ? 'inline-flex' : 'none';
+                return;
+            }
+
+            svg.style.display = 'block';
+            emptyMessage.style.display = 'none';
+            spinButton.disabled = svg.classList.contains('is-spinning');
+            resetButton.style.display = getRemovedItems().length > 0 ? 'inline-flex' : 'none';
+
+            svg.innerHTML = ''; // Clear existing segments
+            
+            // Draw Center
+            const centerCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            centerCircle.setAttribute('cx', 100);
+            centerCircle.setAttribute('cy', 100);
+            centerCircle.setAttribute('r', 95);
+            centerCircle.setAttribute('fill', '#333');
+            svg.appendChild(centerCircle);
+
+            const segmentAngle = 360 / items.length;
+
+            items.forEach((item, index) => {
+                const startAngle = (index * segmentAngle - 90) * (Math.PI / 180);
+                const endAngle = ((index + 1) * segmentAngle - 90) * (Math.PI / 180);
+
+                const x1 = 100 + 95 * Math.cos(startAngle);
+                const y1 = 100 + 95 * Math.sin(startAngle);
+                const x2 = 100 + 95 * Math.cos(endAngle);
+                const y2 = 100 + 95 * Math.sin(endAngle);
+                
+                const largeArc = segmentAngle > 180 ? 1 : 0;
+                
+                const pathData = `M 100 100 L ${x1} ${y1} A 95 95 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+                // Segment Path
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', COLORS[index % COLORS.length]);
+                path.setAttribute('stroke', '#fff');
+                path.setAttribute('stroke-width', '2');
+                svg.appendChild(path);
+
+                // Segment Text
+                const textAngle = index * segmentAngle + segmentAngle / 2;
+                const textRadius = 65;
+                const textX = 100 + textRadius * Math.cos((textAngle - 90) * Math.PI / 180);
+                const textY = 100 + textRadius * Math.sin((textAngle - 90) * Math.PI / 180);
+                const fontSize = items.length > 15 ? 8 : items.length > 10 ? 10 : 12;
+                const textRotation = textAngle - 90;
+
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute('x', textX);
+                text.setAttribute('y', textY);
+                text.setAttribute('fill', 'white');
+                text.setAttribute('font-size', fontSize);
+                text.setAttribute('font-weight', 'bold');
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.setAttribute('transform', `rotate(${textRotation}, ${textX}, ${textY})`);
+                text.textContent = item.length > 10 ? item.substring(0, 10) + '...' : item;
+                svg.appendChild(text);
+            });
+
+            // Draw center pin
+            const centerPin = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            centerPin.setAttribute('cx', 100);
+            centerPin.setAttribute('cy', 100);
+            centerPin.setAttribute('r', 15);
+            centerPin.setAttribute('fill', '#fff');
+            svg.appendChild(centerPin);
+            
+            svg.style.transform = `rotate(${rotation}deg)`;
+        }
+
+        // --- Fonctions de Gestion de la Classe ---
+
+        function switchClass(classId) {
+            if (classId === currentClassId) return;
+
+            const classToLoad = classes.find(c => c.id === classId);
+            if (classToLoad) {
+                currentClassId = classId;
+                document.getElementById('winner-display').style.display = 'none';
+                renderAll();
+            }
+        }
+
+        function startAddingClass() {
+            const container = document.getElementById('class-tag-container');
+            container.dataset.isAdding = 'true';
+            renderClassTags();
+        }
+
+        function stopAddingClass() {
+            const container = document.getElementById('class-tag-container');
+            container.dataset.isAdding = 'false';
+            renderClassTags();
+        }
+
+        function addClass() {
+            const input = document.getElementById('new-class-name-input');
+            const newClassName = input ? input.value.trim() : '';
+
+            if (newClassName) {
+                const newClass = {
+                    id: Date.now().toString(),
+                    name: newClassName,
+                    items: [],
+                    removedItems: []
+                };
+                classes.push(newClass);
+                stopAddingClass(); // Stop adding mode
+                switchClass(newClass.id);
+            }
+        }
+
+        function deleteClass(classId) {
+            if (classes.length <= 1) {
+                alert('Vous devez garder au moins une classe');
+                return;
+            }
+            
+            const confirmed = confirm("Êtes-vous sûr de vouloir supprimer cette classe ? Cette action est irréversible.");
+            if (!confirmed) return;
+
+            classes = classes.filter(c => c.id !== classId);
+            
+            if (currentClassId === classId) {
+                switchClass(classes[0].id);
+            } else {
+                renderAll();
+            }
+        }
+
+        function startRename(classId, className) {
+            const container = document.getElementById('class-tag-container');
+            container.dataset.editingId = classId;
+            renderClassTags();
+        }
+
+        function renameClass(classId) {
+            const container = document.getElementById('class-tag-container');
+            const editingClass = classes.find(c => c.id === classId);
+            
+            if (editingClass && editingClass.name.trim()) {
+                // The name has already been updated in the temp input field of renderClassTags
+                container.dataset.editingId = '';
+                renderAll();
+            }
+        }
+
+
+        // --- Fonctions de Gestion des Éléments de la Liste ---
+
+        function addItem() {
+            const input = document.getElementById('new-item-input');
+            const newItem = input.value.trim();
+            const items = getItems();
+
+            if (newItem && items.length < MAX_ITEMS) {
+                const newItems = [...items, newItem];
+                updateCurrentClass(newItems, getRemovedItems());
+                input.value = '';
+            }
+        }
+
+        function removeItem(index) {
+            const items = getItems();
+            if (items.length > 1) {
+                const newItems = items.filter((_, i) => i !== index);
+                updateCurrentClass(newItems, getRemovedItems());
+            }
+        }
+
+        function resetWheel() {
+            const items = getItems();
+            const removedItems = getRemovedItems();
+            
+            const newItems = [...items, ...removedItems];
+            const newRemovedItems = [];
+
+            updateCurrentClass(newItems, newRemovedItems);
+            document.getElementById('winner-display').style.display = 'none';
+        }
+
+
+        // --- Fonctions d'Import/Export ---
+        
+        function handleClassImportClick() {
+            document.getElementById('class-file-input').click();
+        }
+
+        async function importClassItems(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                let importedItems = [];
+                
+                if (file.name.endsWith('.csv')) {
+                    const lines = text.split('\n').filter(line => line.trim());
+                    importedItems = lines.map(line => {
+                        const firstValue = line.split(',')[0].trim();
+                        return firstValue.replace(/^["']|["']$/g, '');
+                    }).filter(item => item);
+                } else {
+                    importedItems = text.split('\n')
+                        .map(line => line.trim())
+                        .filter(line => line);
+                }
+
+                if (importedItems.length > 0) {
+                    const currentItems = getItems();
+                    const newItemsSet = new Set([...currentItems, ...importedItems]);
+                    const newItems = Array.from(newItemsSet).slice(0, MAX_ITEMS);
+                    
+                    if (newItems.length < importedItems.length) {
+                        alert("Certains élèves n'ont pas été importés car la limite de 30 élèves a été atteinte ou car il s'agissait de doublons.");
+                    }
+                    
+                    updateCurrentClass(newItems, getRemovedItems());
+                }
+            } catch (error) {
+                alert('Erreur lors de l\'import du fichier');
+                console.error(error);
+            }
+
+            event.target.value = ''; // Reset file input
+        }
+
+        function exportCurrentClass() {
+            const currentClass = classes.find(c => c.id === currentClassId);
+            if (!currentClass) return;
+
+            const allItems = [...currentClass.items, ...currentClass.removedItems];
+            const text = allItems.join('\n');
+            downloadFile(`${currentClass.name || 'classe'}-prenoms.txt`, text, 'text/plain');
+        }
+        
+        function handleAllClassesImportClick() {
+            document.getElementById('all-classes-file-input').click();
+        }
+
+        async function importAllClasses(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (data.classes && Array.isArray(data.classes)) {
+                    const confirmed = confirm(
+                        `Voulez-vous remplacer vos ${classes.length} classe(s) actuelle(s) par les ${data.classes.length} classe(s) du fichier ?\n\nCette action est irréversible.`
+                    );
+                    
+                    if (confirmed) {
+                        classes = data.classes;
+                        const firstClass = data.classes[0];
+                        currentClassId = firstClass.id;
+                        alert(`${data.classes.length} classe(s) importée(s) avec succès !`);
+                        renderAll();
+                    }
+                } else {
+                    alert('Format de fichier invalide');
+                }
+            } catch (error) {
+                alert('Erreur lors de l\'import du fichier (Le fichier doit être au format JSON)');
+                console.error(error);
+            }
+
+            event.target.value = ''; // Reset file input
+        }
+
+        function exportAllClasses() {
+            const dataToExport = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                classes: classes
+            };
+            const text = JSON.stringify(dataToExport, null, 2);
+            downloadFile(`roue-toutes-classes-${new Date().toISOString().split('T')[0]}.json`, text, 'application/json');
+        }
+
+        function downloadFile(filename, text, mimeType) {
+            const blob = new Blob([text], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // --- Fonctions de la Roue et Animation ---
+
+        function announceWinner(name) {
+            const utterance = new SpeechSynthesisUtterance(`Et le gagnant est... ${name} !`);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function spinWheel() {
+            const items = getItems();
+            const svg = document.getElementById('wheel-svg');
+            if (svg.classList.contains('is-spinning') || items.length === 0) return;
+            
+            // UI state
+            svg.classList.add('is-spinning');
+            svg.classList.remove('wheel-svg-stopped');
+            document.getElementById('spin-button').disabled = true;
+            document.getElementById('winner-display').style.display = 'none';
+
+            const minRotations = 10;
+            const maxRotations = 15;
+            const extraRotations = minRotations + Math.random() * (maxRotations - minRotations);
+            const randomDegree = Math.random() * 360;
+            const totalRotation = rotation + (extraRotations * 360) + randomDegree;
+            
+            rotation = totalRotation;
+            svg.style.transform = `rotate(${totalRotation}deg)`;
+
+            // Get winner after transition ends (8 seconds)
+            setTimeout(() => {
+                svg.classList.remove('is-spinning');
+                svg.classList.add('wheel-svg-stopped'); // Remove transition for next spin
+                
+                const normalizedRotation = totalRotation % 360;
+                const segmentAngle = 360 / items.length;
+                
+                // Angle from top pointer (360 - normalized rotation) / segmentAngle
+                // We need to invert the index calculation because 0 degree is at 3 o'clock in SVG
+                const winnerIndex = Math.floor((360 - normalizedRotation) / segmentAngle) % items.length;
+                
+                const winnerName = items[winnerIndex];
+                
+                document.getElementById('winner-name').textContent = winnerName;
+                document.getElementById('winner-display').style.display = 'block';
+                document.getElementById('spin-button').disabled = false;
+                
+                // Announce winner
+                setTimeout(() => {
+                    announceWinner(winnerName);
+                    
+                    // Remove item from list after announcement (delay 2.5s)
+                    setTimeout(() => {
+                        const newItems = items.filter((_, i) => i !== winnerIndex);
+                        const newRemovedItems = [...getRemovedItems(), winnerName];
+                        updateCurrentClass(newItems, newRemovedItems);
+                    }, 2500);
+                }, 800);
+            }, 8000);
+        }
+        
+        // --- Lancement ---
+        
+        document.addEventListener('DOMContentLoaded', loadData);
+
+    </script>
+</body>
+</html>
